@@ -20,7 +20,7 @@ $checkVat = $vatchecker->checkVat( $vatNumber, $countryId );
 $vatValid = $checkVat['valid'];
 $vatError = $checkVat['error'];
 
-$valid = ( true === $vatValid );
+$valid = ( true === $vatValid ) || ( Configuration::get( 'VATCHECKER_SKIP_VIES' ) && $vatValid === null );
 
 if ( ! $is_eu ) {
 	$valid = null;

@@ -33,10 +33,9 @@ jQuery( function( $ ) {
 		checked   = {};
 
 	vatchecker.validate = function( vat_number, id_country, $elem ) {
-		$elem.removeClass( 'validated error text-danger text-success' );
-		$elem.next( '.vat-result' ).remove();
-		$elem.after( '<div class="vat-result small"></div>' );
-		$result = $elem.next( '.vat-result' );
+		$elem.removeClass( 'validated text-danger text-success' );
+		$elem.next( '.help-block' ).remove();
+		$elem.after( '<div class="help-block"></div>' );
 
 		// Minimal VAT number length is 8 digits.
 		// https://en.wikipedia.org/wiki/VAT_identification_number
@@ -44,7 +43,7 @@ jQuery( function( $ ) {
 			return;
 		}
 
-		var $result          = $elem.next( '.vat-result' ),
+		var $result          = $elem.next( '.help-block' ),
 			loading          = '. . . ',
 			loading_interval = setInterval( function() {
 			if ( 20 < loading.length ) {
@@ -81,7 +80,7 @@ jQuery( function( $ ) {
 		} ).fail( function( resp ) {
 			clearInterval( loading_interval );
 			$result.remove();
-			$elem.addClass( 'error text-danger' );
+			$elem.addClass( 'text-danger' );
 		} );
 
 		function success( resp ) {
@@ -93,22 +92,24 @@ jQuery( function( $ ) {
 				if ( true === resp.valid ) {
 					// Valid VAT
 					$elem.addClass( 'validated text-success' );
+					$elem.parent().find('.help-block ul').remove();
+					$elem.closest('.row').removeClass('has-error');
 					$result.remove();
 
 					checked[ vat_number ] = resp;
 				} else if ( false === resp.valid ) {
-					$elem.addClass( 'error text-danger' );
+					$elem.addClass( 'text-danger' );
 					if ( resp.hasOwnProperty( 'error' ) && resp.error ) {
 						// Error message.
-						$result.addClass( 'text-danger' ).html( resp.error );
+						$result.html( '<ul><li class="alert alert-danger">' + resp.error + '</li> </ul>' );
 					}
 				} else {
-					$elem.removeClass( 'validated error text-danger text-success' );
+					$elem.removeClass( 'validated text-danger text-success' );
 					$result.remove();
 				}
 			} else {
 				// Fail
-				$elem.addClass( 'error text-danger' );
+				$elem.addClass( 'text-danger' );
 				$result.remove();
 			}
 		}

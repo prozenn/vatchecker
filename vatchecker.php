@@ -89,7 +89,7 @@ class Vatchecker extends Module
 	{
 		$this->name = 'vatchecker';
 		$this->tab = 'billing_invoicing';
-		$this->version = '2.0.3';
+		$this->version = '2.1.0';
 		$this->author = 'Inform-All & Keraweb';
 		$this->need_instance = 1;
 
@@ -117,6 +117,7 @@ class Vatchecker extends Module
 		Configuration::updateValue('VATCHECKER_LIVE_MODE', true);
 		Configuration::updateValue('VATCHECKER_REQUIRED', true);
 		Configuration::updateValue('VATCHECKER_ALLOW_OFFLINE', true);
+		Configuration::updateValue('VATCHECKER_SKIP_VIES', false);
 		//Configuration::updateValue('VATCHECKER_EU_COUNTRIES', null );
 		//Configuration::updateValue('VATCHECKER_ORIGIN_COUNTRY', null);
 
@@ -154,6 +155,7 @@ class Vatchecker extends Module
 		Configuration::deleteByName('VATCHECKER_LIVE_MODE');
 		Configuration::deleteByName('VATCHECKER_REQUIRED');
 		Configuration::deleteByName('VATCHECKER_ALLOW_OFFLINE');
+		Configuration::deleteByName('VATCHECKER_SKIP_VIES');
 		Configuration::deleteByName('VATCHECKER_ORIGIN_COUNTRY');
 		Configuration::deleteByName('VATCHECKER_EU_COUNTRIES');
 
@@ -238,6 +240,7 @@ class Vatchecker extends Module
 			'VATCHECKER_LIVE_MODE'      => Configuration::get( 'VATCHECKER_LIVE_MODE', null, null, null, true ),
 			'VATCHECKER_REQUIRED'       => Configuration::get( 'VATCHECKER_REQUIRED', null, null, null, true ),
 			'VATCHECKER_ALLOW_OFFLINE'  => Configuration::get( 'VATCHECKER_ALLOW_OFFLINE', null, null, null, true ),
+			'VATCHECKER_SKIP_VIES'      => Configuration::get( 'VATCHECKER_SKIP_VIES' ),
 			'VATCHECKER_ORIGIN_COUNTRY' => Configuration::get( 'VATCHECKER_ORIGIN_COUNTRY', null, null, null, '0' ),
 		);
 
@@ -356,6 +359,25 @@ class Vatchecker extends Module
 							),
 							array(
 								'id'    => 'offline_disabled',
+								'value' => false,
+								'label' => $this->l('Disabled'),
+							),
+						),
+					),
+					array(
+						'type'    => 'switch',
+						'label'   => $this->l('Skip VIES validation'),
+						'name'    => 'VATCHECKER_SKIP_VIES',
+						'is_bool' => true,
+						'desc'    => $this->l('Validate only VAT number without calling VIEW'),
+						'values'  => array(
+							array(
+								'id'    => 'skip_enabled',
+								'value' => true,
+								'label' => $this->l('Enabled'),
+							),
+							array(
+								'id'    => 'skip_disabled',
 								'value' => false,
 								'label' => $this->l('Disabled'),
 							),
@@ -722,17 +744,25 @@ class Vatchecker extends Module
 			self::$cache[ $cache_key ] = $return;
 			return $return;
 		}
-		
+
 		$vatNumber = ltrim( $vatNumber, $countryCode );
 
-		if ( ! $this->isVatFormat( $vatNumber ) ) {
+		if ( ! $this->isVatFormat( $vatNumber, $countryCode ) ) {
 			$return['error'] = $this->l( 'VAT number format invalid' );
 			self::$cache[ $cache_key ] = $return;
 			return $return;
 		}
 
 		// Format validated, make the call!
-		self::$cache[ $cache_key ] = $this->checkVies( $countryCode, $vatNumber );
+		if ( ! Configuration::get( 'VATCHECKER_SKIP_VIES' ) ) {
+			self::$cache[ $cache_key ] = $this->checkVies( $countryCode, $vatNumber );
+		} else {
+			self::$cache[ $cache_key ] = array(
+				'valid' => null,
+				'error' => '',
+			);
+		}
+
 		return self::$cache[ $cache_key ];
 	}
 
@@ -813,17 +843,18 @@ class Vatchecker extends Module
 	 * @since 2.0.0
 	 *
 	 * @param string $vatNumber
+	 * @param string $countryCode
 	 *
 	 * @return bool
 	 */
-	public function isVatFormat( $vatNumber )
+	public function isVatFormat( $vatNumber, $countryCode )
 	{
 		if ( ! $vatNumber ) {
 			return false;
 		}
 
-		$formats = implode( '|', $this->euVatFormats );
-		$preg    = '/(?xi)^(' . $formats . ')$/';
+//		$formats = implode( '|', $this->euVatFormats );
+		$preg    = '/(?xi)^(' . $this->euVatFormats[strtoupper($countryCode)] . ')$/';
 
 		return (bool) preg_match( $preg, $vatNumber );
 	}
